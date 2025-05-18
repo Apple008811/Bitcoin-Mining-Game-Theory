@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mining Fork Decision Simulation</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    label { display: block; margin-top: 10px; }
+    input { margin-left: 10px; }
+    #result { margin-top: 20px; font-weight: bold; }
+    .genesis-center {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .genesis-block {
+      width: 70px;
+      height: 70px;
+      border-radius: 8px;
+      background: #e0e0e0;
+      border: 2px solid #757575;
+      color: #424242;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+      box-shadow: 0 2px 8px #ccc;
+      position: relative;
+      z-index: 2;
+    }
+    .fork-arrows {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      margin-bottom: -10px;
+      position: relative;
+      z-index: 1;
+    }
+    .fork-arrow {
+      width: 120px;
+      height: 30px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      font-size: 32px;
+      color: #888;
+    }
+    .chain-container { margin-top: 10px; display: flex; justify-content: center; }
+    .chain { display: flex; align-items: center; margin: 0 40px; }
+    .block { width: 60px; height: 60px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; margin: 0 8px; box-shadow: 0 2px 8px #ccc; position: relative; }
+    .blockA { background: #e3f2fd; border: 2px solid #2196f3; color: #1565c0; }
+    .blockB { background: #fff3e0; border: 2px solid #ff9800; color: #e65100; }
+    .arrow { font-size: 32px; color: #888; margin: 0 2px; }
+    .chain-label { text-align: center; margin-bottom: 8px; font-weight: bold; }
+    .btn { margin-top: 16px; padding: 8px 18px; font-size: 16px; border-radius: 6px; border: 1px solid #2196f3; background: #e3f2fd; color: #1565c0; cursor: pointer; transition: background 0.2s; }
+    .btn:hover { background: #bbdefb; }
+    .prob-label { color: #888; font-size: 14px; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <h2>Mining Fork Decision Simulation</h2>
+  <label>
+    Hashrate of Chain A:
+    <input type="number" id="hashA" step="1" value="60" min="0">
+  </label>
+  <label>
+    Hashrate of Chain B:
+    <input type="number" id="hashB" step="1" value="40" min="0">
+  </label>
+  <label>
+    Probability Chain A becomes the longest chain:
+    <input type="number" id="pA" step="0.01" value="0.6" min="0" max="1" readonly>
+    <span class="prob-label">Auto-calculated</span>
+  </label>
+  <label>
+    Probability Chain B becomes the longest chain:
+    <input type="number" id="pB" step="0.01" value="0.4" min="0" max="1" readonly>
+    <span class="prob-label">Auto-calculated</span>
+  </label>
+  <label>
+    Block Reward (BTC):
+    <input type="number" id="reward" step="0.01" value="6.25">
+  </label>
+  <label>
+    Mining Cost (BTC):
+    <input type="number" id="cost" step="0.01" value="2.0">
+  </label>
+  <button onclick="calculate()">Calculate Optimal Decision</button>
+  <button class="btn" onclick="addBlock()">Add New Block</button>
+  <div id="result"></div>
+
+  <div class="genesis-center">
+    <div class="genesis-block">Genesis<br>Block</div>
+  </div>
+  <div class="fork-arrows">
+    <div class="fork-arrow">↘️</div>
+    <div style="width:60px;"></div>
+    <div class="fork-arrow">↙️</div>
+  </div>
+  <div class="chain-container">
+    <div>
+      <div class="chain-label">Chain A Structure</div>
+      <div class="chain" id="chainA"></div>
+    </div>
+    <div>
+      <div class="chain-label">Chain B Structure</div>
+      <div class="chain" id="chainB"></div>
+    </div>
+  </div>
+
+  <script>
+    // Block number state
+    let aBlocks = ["A1", "A2", "A3"];
+    let bBlocks = ["B1", "B2", "B3"];
+    let aNext = 4;
+    let bNext = 4;
+
+    // Automatically calculate probabilities
+    function updateProb() {
+      const hashA = parseFloat(document.getElementById('hashA').value);
+      const hashB = parseFloat(document.getElementById('hashB').value);
+      let pA = 0, pB = 0;
+      if (hashA + hashB > 0) {
+        pA = hashA / (hashA + hashB);
+        pB = hashB / (hashA + hashB);
+      }
+      document.getElementById('pA').value = pA.toFixed(4);
+      document.getElementById('pB').value = pB.toFixed(4);
+    }
+
+    document.getElementById('hashA').addEventListener('input', function() {
+      updateProb();
+    });
+    document.getElementById('hashB').addEventListener('input', function() {
+      updateProb();
+    });
+
+    function calculate() {
+      updateProb();
+      const pA = parseFloat(document.getElementById('pA').value);
+      const pB = parseFloat(document.getElementById('pB').value);
+      const reward = parseFloat(document.getElementById('reward').value);
+      const cost = parseFloat(document.getElementById('cost').value);
+
+      const expectedA = pA * reward - cost;
+      const expectedB = pB * reward - cost;
+
+      let decision = '';
+      if (expectedA > expectedB && expectedA > 0) {
+        decision = 'Recommendation: Mine on Chain A';
+      } else if (expectedB > expectedA && expectedB > 0) {
+        decision = 'Recommendation: Mine on Chain B';
+      } else {
+        decision = 'Recommendation: Do not mine (expected return is negative)';
+      }
+
+      document.getElementById('result').innerHTML = `
+        Expected return on Chain A: <b>${expectedA.toFixed(4)} BTC</b><br>
+        Expected return on Chain B: <b>${expectedB.toFixed(4)} BTC</b><br>
+        <span style="color:blue">${decision}</span>
+      `;
+
+      renderChains();
+    }
+
+    // Add new block to both chains
+    function addBlock() {
+      aBlocks.push("A" + aNext);
+      bBlocks.push("B" + bNext);
+      aNext++;
+      bNext++;
+      renderChains();
+    }
+
+    // Visualize Chain A and Chain B structure (both fork from the same Genesis Block)
+    function renderChains() {
+      const chainA = document.getElementById('chainA');
+      const chainB = document.getElementById('chainB');
+      chainA.innerHTML = '';
+      chainB.innerHTML = '';
+
+      // Chain A blocks
+      for (let i = 0; i < aBlocks.length; i++) {
+        chainA.innerHTML += `<div class="block blockA">${aBlocks[i]}</div>`;
+        if (i !== aBlocks.length - 1) chainA.innerHTML += '<span class="arrow">→</span>';
+      }
+      // Chain B blocks
+      for (let i = 0; i < bBlocks.length; i++) {
+        chainB.innerHTML += `<div class="block blockB">${bBlocks[i]}</div>`;
+        if (i !== bBlocks.length - 1) chainB.innerHTML += '<span class="arrow">→</span>';
+      }
+    }
+
+    // Initial rendering
+    updateProb();
+    renderChains();
+  </script>
+</body>
+</html> 
